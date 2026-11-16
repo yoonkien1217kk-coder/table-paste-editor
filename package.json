@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "build:cloudflare": "node scripts/build-cloudflare.mjs",
+    "test:cloudflare": "node --test regression/cloudflare-build.test.mjs",
+    "dev:cloudflare": "npm run build:cloudflare && wrangler dev",
+    "check:cloudflare": "npm run test:cloudflare && wrangler deploy --dry-run"
+  },
+  "dependencies": {
+    "@rhwp/core": "0.9.0",
+    "jodit": "4.18.10"
+  },
+  "devDependencies": {
+    "wrangler": "^4.161.0"
+  }
+}

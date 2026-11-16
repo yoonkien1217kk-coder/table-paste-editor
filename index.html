@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>문서 편집기 · 표 붙여넣기 실험실</title>
+    <link rel="stylesheet" href="./node_modules/jodit/es2021/jodit.min.css" />
+    <link rel="stylesheet" href="./style.css?v=20261113-table-layout-v2" />
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <div class="brand"><span class="brand-mark">T</span><span>표 붙여넣기 실험실</span><small>무료 편집기 시제품</small></div>
+        <div class="header-actions"><button id="import-hwp" type="button">HWP 파일 가져오기</button><input id="hwp-file" type="file" accept=".hwp" hidden /><button id="reload-preview" type="button" hidden>변환본 새로고침</button><button id="sample" type="button">예제 표 넣기</button><button id="clear-all" type="button">전체 삭제</button><button id="download" class="primary" type="button">HTML 저장</button></div>
+      </header>
+      <main>
+        <section class="intro">
+          <p class="eyebrow">CONTENT EDITOR · PASTE TEST</p>
+          <h1>문서의 표를<br /><em>그대로 가져오는</em> 편집기</h1>
+          <p>HWP 파일을 선택하거나 끌어다 놓고, 한글·Word·Excel·웹에서 내용을 복사해 붙여넣어 보세요.</p>
+        </section>
+        <section class="workspace" aria-label="콘텐츠 편집기">
+          <div class="workspace-top"><div><span class="live-dot"></span> 편집 중</div><span id="stats">0자 · 표 0개</span></div>
+          <div id="toolbar" class="toolbar" aria-label="서식 도구"></div>
+          <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden />
+          <input id="text-color" class="color-input" type="color" value="#202b34" aria-label="글자색 선택" />
+          <input id="background-color" class="color-input" type="color" value="#ffffff" aria-label="배경색 선택" />
+          <div id="editor" contenteditable="true" role="textbox" aria-label="문서 본문" aria-multiline="true" spellcheck="true" data-placeholder="여기에 문서를 붙여넣거나 내용을 입력하세요..."></div>
+          <textarea id="html-source" aria-label="HTML 코드 편집" spellcheck="false" hidden></textarea>
+          <div class="editor-bottom"><span id="status" role="status">붙여넣을 준비가 되었습니다.</span><div><button id="source-toggle" type="button">HTML 코드</button><button id="copy-html" type="button">HTML 복사</button></div></div>
+          <details id="hwp-text-check" hidden><summary>HWP 원문 텍스트 확인</summary><pre id="hwp-text"></pre></details>
+        </section>
+        <p class="hint">HWP 파일은 선택하거나 편집기에 끌어다 놓으세요. 탐색기에서 파일 복사 후 붙여넣기는 브라우저가 파일 데이터를 제공할 때만 작동합니다. HWP 변환은 표와 본문을 편집 가능한 HTML로 옮기며 원본의 페이지 배치까지 같지는 않을 수 있습니다.</p>
+      </main>
+    </div>
+    <dialog id="emoji-dialog" aria-labelledby="emoji-title"><div class="emoji-dialog-head"><strong id="emoji-title">이모지 선택</strong><button id="emoji-close" type="button" aria-label="닫기">×</button></div><input id="emoji-search" type="search" placeholder="이모지 이름 검색" aria-label="이모지 검색" /><div id="emoji-categories" class="emoji-categories" role="tablist" aria-label="이모지 카테고리"></div><div id="emoji-grid" class="emoji-grid"></div></dialog>
+    <dialog id="clear-dialog" aria-labelledby="clear-title" aria-describedby="clear-description"><h2 id="clear-title">내용 전체 삭제</h2><p id="clear-description">편집 중인 글과 표를 모두 삭제할까요? 자동 저장된 내용도 함께 지워집니다.</p><div class="clear-dialog-actions"><button id="clear-cancel" type="button">취소</button><button id="clear-confirm" type="button">전체 삭제</button></div></dialog>
+    <script src="./node_modules/jodit/es2021/jodit.min.js"></script>
+    <script type="module" src="./src/app.js?v=20261113-hwp-copy-align"></script>
+  </body>
+</html>

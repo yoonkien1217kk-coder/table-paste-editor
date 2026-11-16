@@ -1,0 +1,11 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "table-paste-editor-preview",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "none"
+  }
+}
