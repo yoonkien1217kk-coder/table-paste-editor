@@ -1,0 +1,43 @@
+<!doctype html><html lang="ko"><meta charset="utf-8"><title>이미지 붙여넣기 회귀 검사</title><pre id="results">검사 중</pre>
+<script type="module">
+const output = document.querySelector('#results');
+const frame = document.createElement('iframe');
+frame.src = `../?migration-test=image-paste-${Date.now()}`;
+document.body.append(frame);
+await new Promise(resolve => frame.addEventListener('load', resolve, { once:true }));
+for (let i = 0; i < 100 && !frame.contentWindow.editorInstance; i++) await new Promise(resolve => setTimeout(resolve, 100));
+const win = frame.contentWindow;
+const editor = win.editorInstance;
+const canvas = win.document.createElement('canvas');
+canvas.width = 12;
+canvas.height = 8;
+const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+const file = new win.File([blob], 'sample.png', { type:'image/png' });
+const dataUrl = await new Promise(resolve => {
+  const reader = new win.FileReader();
+  reader.onload = () => resolve(reader.result);
+  reader.readAsDataURL(file);
+});
+async function paste(html, withFile) {
+  editor.value = '';
+  editor.s.focus();
+  const data = new win.DataTransfer();
+  if (html) data.setData('text/html', html);
+  if (withFile) data.items.add(file);
+  editor.editor.dispatchEvent(new win.ClipboardEvent('paste', { bubbles:true, cancelable:true, clipboardData:data }));
+  await new Promise(resolve => setTimeout(resolve, 300));
+  return { images:[...editor.editor.querySelectorAll('img')], tables:editor.editor.querySelectorAll('table').length,
+    stored:new win.DOMParser().parseFromString(editor.value, 'text/html').querySelector('img')?.getAttribute('src') || '' };
+}
+const failures = [];
+const html = await paste(`<p>앞<img src="${dataUrl}" width="12" height="8" alt="그림">뒤</p>`, false);
+if (html.images.length !== 1 || html.images[0].getAttribute('width') !== '12' || html.images[0].getAttribute('height') !== '8' || !html.stored.startsWith('data:image/png;base64,')) failures.push('HTML 이미지 크기·저장');
+const independent = await paste('', true);
+if (independent.images.length !== 1 || !independent.stored.startsWith('data:image/png;base64,')) failures.push('독립 PNG');
+const mixed = await paste('<table><tr><td>표</td></tr></table>', true);
+if (mixed.tables !== 1 || mixed.images.length !== 0) failures.push('표와 대체 PNG 중복');
+const invalid = await paste('<p><img src="file:///private/title.jpg"></p>', true);
+if (invalid.images.length !== 0) failures.push('연결 근거 없는 이미지');
+output.textContent = failures.length ? `FAIL ${failures.join(', ')}` : 'ALL PASS';
+frame.remove();
+</script>

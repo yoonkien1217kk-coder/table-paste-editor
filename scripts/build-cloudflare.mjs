@@ -7,11 +7,12 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const output = path.join(root, 'dist');
 const staging = await fs.mkdtemp(path.join(root, '.cloudflare-build-'));
 const files = [
-  'JODIT-LICENSE.txt', 'RHWP-LICENSE.txt', 'RHWP-THIRD-PARTY-LICENSES.md', 'emoji/LICENSE', 'emoji/emojis-ko.json',
+  'JODIT-LICENSE.txt', 'RHWP-LICENSE.txt', 'RHWP-THIRD-PARTY-LICENSES.md', 'FFLATE-LICENSE.txt', 'emoji/LICENSE', 'emoji/emojis-ko.json',
   'node_modules/@rhwp/core/rhwp.js',
+  'node_modules/fflate/esm/browser.js',
   'node_modules/jodit/es2021/jodit.min.css',
   'node_modules/jodit/es2021/jodit.min.js',
-  'src/app.js', 'src/hwp-worker.js', 'src/large-draft.js', 'src/paste.js', 'style.css',
+  'src/app.js', 'src/hwp-worker.js', 'src/hwp3-graphic-char.mjs', 'src/large-draft.js', 'src/paste.js', 'style.css',
 ];
 
 try {

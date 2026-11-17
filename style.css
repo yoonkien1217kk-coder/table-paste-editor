@@ -51,16 +51,15 @@
 #toolbar .jodit-ui-separator{height:20px;align-self:center;margin:0 6px;border-right:1px solid #d4dce3}
 #toolbar .jodit-toolbar-button__button{min-width:34px;min-height:36px;color:#1d2b3e}
 #toolbar .jodit-toolbar-button__button:hover{background:#e8f2ff}
+.spacing-current{padding:8px 12px;color:#315b80;font-size:12px;font-weight:600;border-bottom:1px solid #dce9f7}
+.jodit-popup [role="listitem"][aria-current="true"]{position:relative;background:#e8f2ff;color:#175a9d}
+.jodit-popup [role="listitem"][aria-current="true"]::before{content:'✓';position:absolute;left:5px;top:50%;transform:translateY(-50%);color:#175a9d}
+.jodit-popup [role="listitem"][aria-current="true"] .jodit-toolbar-button__button{padding-left:18px}
 :root{--jd-color-button-background-hover:#e8f2ff;--jd-color-button-background-hover-opacity40:#e8f2ff66;--jd-color-button-background-hover-opacity60:#e8f2ff99}
 .jodit-form__inserter{--jd-color-table-cell-background-hover:#e8f2ff}
 .jodit-form__inserter .jodit-form__table-creator-box .jodit-form__container [role="gridcell"].jodit_hovered{border-color:#8fbff2}
 .editor-tooltip{position:fixed;z-index:10000002;transform:translateX(-50%);padding:5px 8px;border-radius:5px;background:#263238;color:#fff;font:12px/1.3 'Noto Sans KR',sans-serif;white-space:nowrap;pointer-events:none;box-shadow:0 2px 7px #0003}
 .editor-tooltip[hidden]{display:none}
-.color-palette{position:fixed;z-index:9999;display:grid;grid-template-columns:repeat(5,28px);gap:5px;padding:9px;border:1px solid #cbd8e7;border-radius:8px;background:white;box-shadow:0 8px 20px #1d2b3e26}
-.color-palette[hidden]{display:none}
-.color-palette button{width:28px;height:28px;padding:0;border:1px solid #aab8c7;border-radius:4px;cursor:pointer}
-.color-palette button:hover,.color-palette button:focus-visible{outline:2px solid #78afe9;outline-offset:1px}
-.color-palette .color-palette-custom{grid-column:1/-1;width:auto;height:29px;background:#e8f2ff;color:#1d2b3e;font:12px 'Noto Sans KR',sans-serif}
 .background-picker{position:fixed;z-index:10000000;box-sizing:border-box;width:min(252px,calc(100vw - 16px));padding:12px;border:1px solid #cbd8e7;border-radius:9px;background:#fff;box-shadow:0 10px 28px #1d2b3e30;color:#1d2b3e;font:12px 'Noto Sans KR',sans-serif}
 .background-picker[hidden]{display:none}
 .background-picker strong{display:block;margin-bottom:10px;font-size:13px}

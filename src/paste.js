@@ -131,6 +131,11 @@ function cleanNode(node, target, classStyles, anchors, assignedAnchors) {
       if (/^https:\/\//i.test(src) || /^data:image\/(?:png|jpeg|webp|gif);base64,[a-z0-9+/=]+$/i.test(src)) destination.setAttribute('src', src);
       else return;
       destination.setAttribute('alt', node.getAttribute('alt') || '');
+      for (const size of ['width', 'height']) {
+        const value = node.getAttribute(size) || '';
+        if (/^[1-9]\d{0,3}$/.test(value)) destination.setAttribute(size, value);
+        else if (SAFE_DIMENSION.test(value)) destination.style.setProperty(size, value);
+      }
     }
     if (node.hasAttribute('align') && ['left', 'right', 'center', 'justify'].includes(node.getAttribute('align').toLowerCase())) {
       destination.style.textAlign = node.getAttribute('align').toLowerCase();
@@ -171,6 +176,22 @@ export function sanitizePastedHtml(html) {
   const output = document.implementation.createHTMLDocument('');
   const assignedAnchors = new Set();
   for (const node of parsed.body.childNodes) cleanNode(node, output.body, classStyles, anchors, assignedAnchors);
+  // A standalone heading image can lose its paragraph alignment when copied
+  // with a centered document table. Infer the shared center only in that case.
+  const headingImage = parsed.body.firstElementChild;
+  const documentTable = parsed.body.querySelector('table');
+  const pastedImage = output.body.firstElementChild;
+  if (headingImage?.tagName === 'IMG' && pastedImage?.tagName === 'IMG'
+    && parsed.body.querySelectorAll('img').length === 1
+    && parsed.body.querySelectorAll('table').length === 1
+    && documentTable.style.marginLeft === 'auto' && documentTable.style.marginRight === 'auto'
+    && !headingImage.hasAttribute('align') && !headingImage.style.float
+    && !headingImage.style.marginLeft && !headingImage.style.marginRight) {
+    const centered = output.createElement('div');
+    centered.style.textAlign = 'center';
+    output.body.replaceChild(centered, pastedImage);
+    centered.append(pastedImage);
+  }
   if (/mso-element:frame/i.test(html)) {
     const sourceTables = [...parsed.body.querySelectorAll('table')];
     const outputTables = [...output.body.querySelectorAll('table')];

@@ -1,6 +1,8 @@
 import init, { HwpDocument } from '../node_modules/@rhwp/core/rhwp.js';
+import { normalizeHwp3GraphicChars } from './hwp3-graphic-char.mjs';
 
 const toPixels = value => value * 96 / 7200;
+const escapeHtml = text => text.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
 let ready;
 
 function fragment(html) {
@@ -29,8 +31,8 @@ function tableHtml(doc, control, pageLeft) {
   return html;
 }
 
-function convert(bytes, format) {
-  const doc = new HwpDocument(bytes);
+async function convert(bytes, format) {
+  const doc = new HwpDocument(format === 'hwp3' ? await normalizeHwp3GraphicChars(bytes) : bytes);
   try {
     if (doc.getSectionCount() !== 1) throw new Error('여러 구역으로 된 HWP 문서는 아직 가져올 수 없습니다.');
     const page = JSON.parse(doc.getPageDef(0));
@@ -42,9 +44,10 @@ function convert(bytes, format) {
 
     const controls = new Map();
     const warnings = [];
+    let hasFooter = false;
     for (const control of JSON.parse(doc.getControls())) {
       if (control.list !== 0 || ['secd', 'cold', 'pgnp'].includes(control.ctrlId)) continue;
-      if (control.ctrlId === 'foot') { warnings.push(`꼬리말을 가져오지 못했습니다 (문단 ${control.para + 1}).`); continue; }
+      if (control.ctrlId === 'foot') { hasFooter = true; continue; }
       if (!['tbl', 'gso'].includes(control.ctrlId)) {
         if (control.ctrlId) warnings.push(`일부 개체(${control.ctrlId})를 가져오지 못했습니다 (문단 ${control.para + 1}).`);
         continue;
@@ -86,11 +89,28 @@ function convert(bytes, format) {
       }
       if (start < length) blocks.push(fragment(doc.exportSelectionHtml(0, para, start, para, length)));
     }
+    const footerTexts = [];
+    if (format === 'hwp3' && hasFooter) {
+      let imported = 0;
+      for (const item of JSON.parse(doc.getHeaderFooterList(0, false, 0)).items || []) {
+        if (item.isHeader) continue;
+        const footer = JSON.parse(doc.getHeaderFooter(0, false, item.applyTo));
+        if (!footer.ok || !footer.exists || typeof footer.text !== 'string' || !footer.text.trim()) continue;
+        blocks.push(`<p style="text-align:center">${escapeHtml(footer.text.trim()).replaceAll('\n', '<br>')}</p>`);
+        footerTexts.push(footer.text.trim());
+        imported++;
+      }
+      warnings.push(imported
+        ? '꼬리말 글자는 문서 끝에 한 번 표시했습니다. 페이지별 반복 배치는 재현하지 않았습니다.'
+        : '꼬리말 글자를 가져오지 못했습니다.');
+    } else if (hasFooter) {
+      warnings.push('꼬리말을 가져오지 못했습니다.');
+    }
     const html = `<div style="width:${width.toFixed(2)}px;max-width:none;padding-left:${left.toFixed(2)}px;padding-right:${right.toFixed(2)}px;margin-left:auto;margin-right:auto">\n${blocks.join('\n')}\n</div>`;
     if ((html.match(/<table\b/gi) || []).length !== tableCount || html.includes('\ufffc')) {
       throw new Error('변환된 HTML의 표 개수나 본문 구조가 맞지 않습니다.');
     }
-    return { format, html, table_count:tableCount, preview_text:JSON.parse(doc.getTextFileText()), warnings };
+    return { format, html, table_count:tableCount, preview_text:[JSON.parse(doc.getTextFileText()), ...footerTexts].join('\n'), warnings };
   } finally { doc.free(); }
 }
 
@@ -107,7 +127,7 @@ self.onmessage = async ({ data }) => {
       await init({ module_or_path:new Uint8Array(wasm) });
     })();
     await ready;
-    self.postMessage({ result:convert(bytes, format) });
+    self.postMessage({ result:await convert(bytes, format) });
   } catch (error) {
     self.postMessage({ error:error instanceof Error ? error.message : 'HWP 변환에 실패했습니다.' });
   }
