@@ -12,7 +12,7 @@ const files = [
   'node_modules/fflate/esm/browser.js',
   'node_modules/jodit/es2021/jodit.min.css',
   'node_modules/jodit/es2021/jodit.min.js',
-  'src/app.js', 'src/hwp-worker.js', 'src/hwp3-graphic-char.mjs', 'src/large-draft.js', 'src/paste.js', 'style.css',
+  'src/app.js', 'src/hwp-worker.js', 'src/hwp3-graphic-char.mjs', 'src/large-draft.js', 'src/paste.js', 'src/table-tools.mjs', 'style.css',
 ];
 
 try {
@@ -26,7 +26,7 @@ try {
   await fs.mkdir(path.dirname(wasmDestination), { recursive:true });
   await fs.writeFile(wasmDestination, gzipSync(await fs.readFile(path.join(root, 'node_modules/@rhwp/core/rhwp_bg.wasm')), { level:9 }));
   const source = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  const marker = '    <script type="module" src="./src/app.js?v=20261113-hwp-copy-align"></script>';
+  const marker = '    <script type="module" src="./src/app.js?v=20261118-blank-input-left"></script>';
   if (!source.includes(marker)) throw new Error('편집기 스크립트 위치가 변경되어 배포 화면을 만들지 못했습니다.');
   await fs.writeFile(path.join(staging, 'index.html'), source.replace(marker,
     "    <script>window.EDITOR_HWP_IMPORT='browser'</script>\n" + marker));

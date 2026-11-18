@@ -1,5 +1,6 @@
-import { sanitizePastedHtml, tsvToTable } from './paste.js?v=20261113-hwp-copy-align';
+import { sanitizePastedHtml, tsvToTable } from './paste.js?v=20261118-word-safe-rollback';
 import { readLargeDraft, writeLargeDraft, deleteLargeDraft } from './large-draft.js';
+import { initTableTools } from './table-tools.mjs?v=20261118-fixed-document-width';
 
 const element = document.querySelector('#editor');
 const status = document.querySelector('#status');
@@ -10,11 +11,19 @@ const documentName = new URLSearchParams(location.search).get('document');
 const previewFile = { 강사기본: '강사기본-pasted.html', 제279기: '제279기-pasted.html' }[documentName];
 const testSession = new URLSearchParams(location.search).get('migration-test');
 const storageKey = testSession ? `table-paste-editor-test-${testSession}` : `table-paste-editor-draft-v1${previewFile ? `-${documentName}` : ''}`;
+const blankInputKey = `${storageKey}-flush-left`;
 let editor;
 let previewBaseline = '';
 
 function announce(message) { status.textContent = message; }
 function currentHtml() { return source.hidden ? (editor?.value ?? element.innerHTML) : sanitizePastedHtml(source.value); }
+function setBlankInputMargin(enabled) {
+  editor?.editor.classList.toggle('blank-input-start', enabled);
+  try {
+    if (enabled) localStorage.setItem(blankInputKey, '1');
+    else localStorage.removeItem(blankInputKey);
+  } catch {}
+}
 let largeDraftTimer;
 let pendingLargeDraft;
 let largeDraftWrites = Promise.resolve();
@@ -51,6 +60,7 @@ function update() {
   void persistDraft(currentHtml()).catch(() => announce('자동 저장에 실패했습니다. HTML 파일로 저장해 주세요.'));
 }
 function insertHtml(html, asDocument = false) {
+  setBlankInputMargin(false);
   if (!source.hidden) {
     source.setRangeText(html, source.selectionStart, source.selectionEnd, 'end');
     source.dispatchEvent(new Event('input', { bubbles: true }));
@@ -137,11 +147,13 @@ if (!saved) {
   catch { announce('브라우저 저장 공간을 사용할 수 없습니다. HTML 파일로 저장해 주세요.'); }
 }
 if (saved) element.innerHTML = sanitizePastedHtml(saved);
+const initiallyBlank = !element.textContent.trim() && !element.querySelector('table,img,hr');
 async function loadPreview() {
   announce(`${documentName} 변환본 불러오는 중...`);
   try {
     const response = await fetch(`./results/${previewFile}`, { cache: 'no-store' });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    setBlankInputMargin(false);
     const html = sanitizePastedHtml(await response.text());
     if (editor) editor.value = html;
     else element.innerHTML = html;
@@ -178,6 +190,7 @@ content.addEventListener('copy', event => {
 });
 
 content.addEventListener('paste', event => {
+  if (event.clipboardData?.types.length) setBlankInputMargin(false);
   const file = [...(event.clipboardData?.files || [])].find(item => item.name.toLowerCase().endsWith('.hwp'));
   if (file) { event.preventDefault(); event.stopImmediatePropagation(); importHwp(file); return; }
   const clipboardImage = [...(event.clipboardData?.items || [])]
@@ -252,6 +265,20 @@ controls.paragraph.list = { p:'단락', h1:'제목 1', h2:'제목 2', h3:'제목
 controls.font.list = { 'Pretendard,sans-serif':'Pretendard', 'Malgun Gothic,sans-serif':'맑은 고딕', 'Noto Sans KR,sans-serif':'Noto Sans KR', 'Arial,sans-serif':'Arial', 'Batang,serif':'바탕', 'Hamchorom Dotum,sans-serif':'함초롬돋움' };
 controls.fontsize.list = [8,9,10,11,12,14,16,18,20,24,28,36];
 controls.lineHeight.list = [1,1.2,1.3,1.5,1.6,1.7,2,2.5,3];
+let viewZoom = 100;
+controls.viewZoom = {
+  tooltip:'화면 배율',
+  list:{ 50:'50%', 75:'75%', 100:'100%', 125:'125%', 150:'150%', 200:'200%' },
+  value:() => `${viewZoom}%`,
+  exec:(jodit, _event, { control }) => {
+    const percent = Number(control.args?.[0]);
+    if (![50,75,100,125,150,200].includes(percent)) return;
+    viewZoom = percent;
+    jodit.editor.style.zoom = `${percent}%`;
+    const label = document.querySelector('#toolbar [data-ref="viewZoom"] .jodit-toolbar-select__text');
+    if (label) label.textContent = `${percent}%`;
+  }
+};
 function spacingAtCursor(kind) {
   const selected = window.getSelection()?.anchorNode;
   const current = selected && editor?.editor.contains(selected) ? selected : editor?.s.current();
@@ -296,9 +323,9 @@ window.Jodit.modules.Icon.set('textColor', '<svg viewBox="0 0 24 24"><path d="M1
 window.Jodit.modules.Icon.set('highlightColor', '<svg viewBox="0 0 24 24"><path d="m5 16 9-11 5 4-9 11H5zm1.5 1.5h2.8l7.1-8.7-2-1.6z"/><path data-color-indicator d="M3 22h18v-2H3z"/></svg>');
 window.Jodit.modules.Icon.set('olThreeRows', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path data-number-row d="M9 5h12"/><path data-number-row d="M9 12h12"/><path data-number-row d="M9 19h12"/><g fill="currentColor" stroke="none" font-family="Arial,sans-serif" font-size="7" font-weight="600"><text x="2" y="7.5">1</text><text x="2" y="14.5">2</text><text x="2" y="21.5">3</text></g></svg>');
 window.Jodit.modules.Icon.set('emoji', '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><path d="M8 15c1 2 7 2 8 0" fill="none" stroke="currentColor" stroke-width="2"/></svg>');
-window.Jodit.modules.Icon.set('letterSpacing', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18 7 6l4 12M4.4 14h5.2M15 18l4-12 4 12M16.4 14h5.2M11 11h6m-6 0 2-2m-2 2 2 2m4-2-2-2m2 2-2 2"/></svg>');
+window.Jodit.modules.Icon.set('letterSpacing', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14M5 8h14M5 12h14M4 18h16M7 15l-3 3 3 3M17 15l3 3-3 3"/></svg>');
 controls.letterSpacing = {
-  icon:'letterSpacing', tooltip:'자간', list:[-1,0,0.5,1,1.5,2,3,4],
+  icon:'letterSpacing', tooltip:'글자 간격', list:[-1,0,0.5,1,1.5,2,3,4],
   exec:(jodit, _event, { control }) => {
     const value = Number(control.args?.[0]);
     if (!Number.isFinite(value) || spacingAtCursor('letterSpacing') === value) return;
@@ -337,11 +364,22 @@ editor = window.Jodit.make('#editor', {
   showWordsCounter: false,
   showXPathInStatusbar: false,
   addNewLine: false,
-  buttons: ['undo','redo','|',{ name:'paragraph', component:'select' },{ name:'font', component:'select' },{ name:'fontsize', component:'select' },'|','bold','italic','underline','strikethrough','textColor','highlightColor','\n','image','link','table','|','align','lineHeight','letterSpacing','|','ol','ul','indent','outdent','|','emoji','symbols','eraser']
+  popup: { cells: false },
+  buttons: ['undo','redo','|',{ name:'paragraph', component:'select' },{ name:'font', component:'select' },{ name:'fontsize', component:'select' },{ name:'viewZoom', component:'select' },'|','bold','italic','underline','strikethrough','textColor','highlightColor','\n','image','link','table','|','align','lineHeight','letterSpacing','|','ol','ul','indent','outdent','|','emoji','symbols','eraser']
 });
 window.editorInstance = editor;
+let keepBlankInputMargin = initiallyBlank;
+try { keepBlankInputMargin ||= localStorage.getItem(blankInputKey) === '1'; } catch {}
+if (keepBlankInputMargin) setBlankInputMargin(true);
 const toolbar = document.querySelector('#toolbar');
 let spacingBeforeMenu;
+toolbar.addEventListener('click', event => {
+  const button = event.target.closest?.('#toolbar [data-ref="viewZoom"] .jodit-toolbar-select__button');
+  if (!button) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  button.parentElement.querySelector('.jodit-toolbar-select__trigger')?.click();
+}, true);
 toolbar.addEventListener('click', event => {
   const button = event.target.closest?.('#toolbar [data-ref="letterSpacing"] .jodit-toolbar-button__button');
   if (!button) return;
@@ -359,6 +397,7 @@ tooltip.className = 'editor-tooltip';
 tooltip.role = 'tooltip';
 tooltip.hidden = true;
 document.body.append(tooltip);
+initTableTools(editor, toolbar, update, tooltip);
 let popupOwner = '';
 const menuLabels = {
   center:'가운데 정렬', left:'왼쪽 정렬', right:'오른쪽 정렬', justify:'양쪽 정렬',
@@ -465,7 +504,7 @@ function showToolbarTooltip(event) {
   const gridSize = button.matches('[role="gridcell"]') ? button.getAttribute('aria-label')?.match(/^(\d+) by (\d+)$/) : null;
   const itemText = button.querySelector('.jodit-toolbar-button__text')?.textContent.trim();
   const label = button.dataset.tooltip || (gridSize ? `${gridSize[1]}행 ${gridSize[2]}열 표 삽입`
-    : inPopup ? (menuLabels[button.dataset.ref] || (popupOwner === 'lineHeight' ? `줄 간격 ${itemText || button.dataset.ref}` : popupOwner === 'letterSpacing' ? `자간 ${itemText || button.dataset.ref}px` : popupOwner === 'font' ? `글꼴 ${itemText || button.dataset.ref}` : popupOwner === 'fontsize' ? `글자 크기 ${itemText || button.dataset.ref}pt` : itemText || button.getAttribute('aria-label')))
+    : inPopup ? (menuLabels[button.dataset.ref] || (popupOwner === 'lineHeight' ? `줄 간격 ${itemText || button.dataset.ref}` : popupOwner === 'letterSpacing' ? `글자 간격 ${itemText || button.dataset.ref}px` : popupOwner === 'font' ? `글꼴 ${itemText || button.dataset.ref}` : popupOwner === 'fontsize' ? `글자 크기 ${itemText || button.dataset.ref}pt` : itemText || button.getAttribute('aria-label')))
     : button.getAttribute('aria-label'));
   if (!label) return;
   if (inPopup) {
@@ -518,7 +557,7 @@ toolbar.addEventListener('click', event => {
     if (!popup) return;
     const title = document.createElement('div');
     title.className = 'spacing-current';
-    title.textContent = owner === 'lineHeight' ? `현재 줄 간격: ${spacing}배` : `현재 자간: ${spacing}px`;
+    title.textContent = owner === 'lineHeight' ? `현재 줄 간격: ${spacing}배` : `현재 글자 간격: ${spacing}px`;
     popup.querySelector('.jodit-popup__content')?.prepend(title);
     for (const item of popup.querySelectorAll('[role="listitem"]')) {
       const selected = Number(item.dataset.ref) === spacing;
@@ -748,7 +787,7 @@ source.addEventListener('input', () => {
   void persistDraft(source.value).catch(() => announce('자동 저장에 실패했습니다. HTML 파일로 저장해 주세요.'));
 });
 document.querySelector('#download').addEventListener('click', () => {
-  const html = `<!doctype html><html lang="ko"><meta charset="utf-8"><title>편집 문서</title><style>body{font-family:Arial,sans-serif;line-height:1.6;margin:40px}table{border-collapse:collapse;max-width:100%}td,th{border:1px solid #777;padding:7px 10px}table:not([border]) td,table:not([border]) th{border:0}table[data-hwp-page-table="1"]{max-width:none;margin-left:auto;margin-right:auto}table[style*="width:"][style*="mm"]{max-width:none}</style>${currentHtml()}</html>`;
+  const html = `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>편집 문서</title><style>@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap');body{box-sizing:border-box;width:810px;margin:40px auto;padding:8px;font-family:Pretendard,'Noto Sans KR',sans-serif;font-size:12pt;line-height:1.6}table{border-collapse:collapse;max-width:100%}table[width]{max-width:none}td,th{border:1px solid #777;padding:7px 10px}table:not([border]) td,table:not([border]) th{border:0}table[data-hwp-page-table="1"]{max-width:none;margin-left:auto;margin-right:auto}table[style*="width:"][style*="mm"]{max-width:none}</style>${currentHtml()}</html>`;
   const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
@@ -774,6 +813,7 @@ clearConfirm.addEventListener('click', async () => {
     await largeDraftWrites.catch(() => {});
     await deleteLargeDraft(storageKey);
     editor.value = '<p><br></p>';
+    setBlankInputMargin(true);
     source.value = '<p><br><br></p>';
     document.querySelector('#hwp-text-check').hidden = true;
     document.querySelector('#hwp-text').textContent = '';

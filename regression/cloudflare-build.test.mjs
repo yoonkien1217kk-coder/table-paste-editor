@@ -23,7 +23,7 @@ test('Cloudflare 배포본은 브라우저 HWP 변환기를 포함하고 원본 
     'node_modules/@rhwp/core/rhwp.js', 'node_modules/@rhwp/core/rhwp_bg.wasm.gz',
     'node_modules/fflate/esm/browser.js',
     'node_modules/jodit/es2021/jodit.min.css', 'node_modules/jodit/es2021/jodit.min.js',
-    'src/app.js', 'src/hwp-worker.js', 'src/hwp3-graphic-char.mjs', 'src/large-draft.js', 'src/paste.js', 'style.css',
+    'src/app.js', 'src/hwp-worker.js', 'src/hwp3-graphic-char.mjs', 'src/large-draft.js', 'src/paste.js', 'src/table-tools.mjs', 'style.css',
   ].sort());
   assert.match(readFileSync(path.join(output, 'index.html'), 'utf8'), /window\.EDITOR_HWP_IMPORT='browser'/);
   assert.ok(readFileSync(path.join(output, 'node_modules/@rhwp/core/rhwp_bg.wasm.gz')).byteLength < 25 * 1024 * 1024);

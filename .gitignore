@@ -11,6 +11,7 @@ results/
 regression/*
 !regression/cloudflare-build.test.mjs
 !regression/hwp3-u2027.test.mjs
+!regression/table-tools.test.mjs
 !regression/paste-fallback.html
 !regression/clipboard-audit.html
 !regression/image-paste.html

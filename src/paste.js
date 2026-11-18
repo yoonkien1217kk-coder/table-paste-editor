@@ -89,7 +89,7 @@ function cleanNode(node, target, classStyles, anchors, assignedAnchors) {
     }
 
     if (tag === 'table') {
-      if (/^\d+(?:\.\d+)?mm$/i.test(sourceStyle.width)) destination.style.maxWidth = 'none';
+      if (/^\d+(?:\.\d+)?(?:px|pt|mm|cm|in)$/i.test(sourceStyle.width) && !sourceStyle.maxWidth) destination.style.maxWidth = 'none';
       if (node.getAttribute('data-hwp-page-table') === '1' || isHwpPageTable(node, classStyles)) {
         destination.setAttribute('data-hwp-page-table', '1');
         destination.style.marginLeft = 'auto';
@@ -279,6 +279,29 @@ export function sanitizePastedHtml(html) {
       while (output.body.firstChild) column.append(output.body.firstChild);
       output.body.append(column);
     }
+  }
+  // Polaris copies the document's tables and paragraphs, but omits the page
+  // margins. Keep every table's own offset inside one centered content column.
+  const polarisTables = [...parsed.body.children].filter(node => node.tagName === 'TABLE');
+  if (parsed.body.firstElementChild?.hasAttribute('nativecopyid')
+    && polarisTables.length >= 2 && parsed.body.children.length > polarisTables.length
+    && polarisTables.every(table => /^\d+(?:\.\d+)?px$/i.test(table.style.width)
+      && /^\d+(?:\.\d+)?mm$/i.test(table.style.marginLeft)
+      && /^\d+(?:\.\d+)?mm$/i.test(table.style.marginRight)
+      && parseFloat(table.style.marginLeft) <= 5 && parseFloat(table.style.marginRight) <= 5)) {
+    const width = Math.max(...polarisTables.map(table => parseFloat(table.style.width)
+      + (parseFloat(table.style.marginLeft) + parseFloat(table.style.marginRight)) * 96 / 25.4));
+    const column = output.createElement('div');
+    column.style.width = `${width.toFixed(2)}px`;
+    column.style.maxWidth = 'none';
+    column.style.marginLeft = 'auto';
+    column.style.marginRight = 'auto';
+    for (const paragraph of [...output.body.children].filter(node => node.tagName === 'P')) {
+      if (paragraph.querySelector('img,br') || paragraph.textContent.replaceAll('\u00a0', '').trim()) continue;
+      (paragraph.querySelector('span span') || paragraph).replaceChildren(output.createElement('br'));
+    }
+    while (output.body.firstChild) column.append(output.body.firstChild);
+    output.body.append(column);
   }
   return output.body.innerHTML;
 }
