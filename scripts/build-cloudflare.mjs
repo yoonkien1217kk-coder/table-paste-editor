@@ -26,7 +26,7 @@ try {
   await fs.mkdir(path.dirname(wasmDestination), { recursive:true });
   await fs.writeFile(wasmDestination, gzipSync(await fs.readFile(path.join(root, 'node_modules/@rhwp/core/rhwp_bg.wasm')), { level:9 }));
   const source = await fs.readFile(path.join(root, 'index.html'), 'utf8');
-  const marker = '    <script type="module" src="./src/app.js?v=20261118-blank-input-left"></script>';
+  const marker = '    <script type="module" src="./src/app.js?v=20261118-rhwp-specific"></script>';
   if (!source.includes(marker)) throw new Error('편집기 스크립트 위치가 변경되어 배포 화면을 만들지 못했습니다.');
   await fs.writeFile(path.join(staging, 'index.html'), source.replace(marker,
     "    <script>window.EDITOR_HWP_IMPORT='browser'</script>\n" + marker));

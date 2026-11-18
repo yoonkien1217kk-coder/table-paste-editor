@@ -247,6 +247,48 @@ export function sanitizePastedHtml(html) {
       }
     }
   }
+  // rhwp's clipboard exporter serializes HWP border-width codes as px and
+  // omits the page column. Require its own marker before interpreting codes.
+  const copiedTables = [...parsed.body.querySelectorAll('table')];
+  const copiedCells = [...parsed.body.querySelectorAll('td,th')];
+  const rhwpTables = /<!--\s*rhwp:/i.test(html) && copiedTables.length > 0 && copiedCells.length >= 4
+    && !/mso-|xmlns:x=/i.test(html)
+    && copiedTables.every(table => !table.hasAttribute('width') && !table.style.width
+      && table.getAttribute('cellpadding') === '0' && table.getAttribute('cellspacing') === '0'
+      && table.style.borderCollapse === 'collapse')
+    && copiedCells.filter(cell => /border-(?:left|right|top|bottom):\s*\d+\.0px\s+solid\b/i.test(cell.getAttribute('style') || '')).length >= copiedCells.length * .8
+    && parsed.body.querySelector('p[style*="line-height:"] span[style*="font-size:"]');
+  if (rhwpTables) {
+    const borderWidths = [0.1, 0.12, 0.15, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7, 1, 1.5, 2, 3, 4, 5];
+    const column = output.createElement('div');
+    column.style.width = '680px';
+    column.style.maxWidth = 'none';
+    column.style.marginLeft = 'auto';
+    column.style.marginRight = 'auto';
+    for (const table of output.body.querySelectorAll('table')) {
+      if (table.parentElement.closest('table')) continue;
+      table.style.width = '100%';
+      table.style.maxWidth = 'none';
+      for (const cell of table.querySelectorAll('td,th')) {
+        for (const side of ['left', 'right', 'top', 'bottom']) {
+          const code = /^(\d+)px$/.exec(cell.style.getPropertyValue(`border-${side}-width`));
+          if (code && borderWidths[Number(code[1])] !== undefined) cell.style.setProperty(`border-${side}-width`, `${borderWidths[Number(code[1])]}mm`);
+        }
+      }
+    }
+    for (const node of output.body.querySelectorAll('[style]')) {
+      if (parseFloat(node.style.letterSpacing) < 0) node.style.removeProperty('letter-spacing');
+    }
+    for (const paragraph of output.body.querySelectorAll('p')) {
+      const height = /^(\d+(?:\.\d+)?)%$/.exec(paragraph.style.lineHeight);
+      if (height && Number(height[1]) < 160) paragraph.style.lineHeight = '160%';
+      if (parseFloat(paragraph.style.textIndent) < 0) paragraph.style.removeProperty('text-indent');
+      const sizes = new Set([...paragraph.querySelectorAll('span')].map(span => span.style.fontSize).filter(Boolean));
+      if (!paragraph.style.fontSize && sizes.size === 1) paragraph.style.fontSize = [...sizes][0];
+    }
+    while (output.body.firstChild) column.append(output.body.firstChild);
+    output.body.append(column);
+  }
   // Word's tiny default table offset is relative to the document page, which
   // is absent when a table alone is copied. Center only that standalone table.
   const generator = parsed.querySelector('meta[name="Generator"]')?.getAttribute('content') || '';

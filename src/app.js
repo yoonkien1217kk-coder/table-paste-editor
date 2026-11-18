@@ -1,4 +1,4 @@
-import { sanitizePastedHtml, tsvToTable } from './paste.js?v=20261118-word-safe-rollback';
+import { sanitizePastedHtml, tsvToTable } from './paste.js?v=20261118-rhwp-specific';
 import { readLargeDraft, writeLargeDraft, deleteLargeDraft } from './large-draft.js';
 import { initTableTools } from './table-tools.mjs?v=20261118-fixed-document-width';
 
